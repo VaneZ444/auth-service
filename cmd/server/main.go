@@ -8,8 +8,12 @@ import (
 	"time"
 
 	"github.com/VaneZ444/auth-service/internal/handler"
-	"github.com/VaneZ444/auth-service/internal/repository/postgres"
+	pgRepo "github.com/VaneZ444/auth-service/internal/repository/postgres"
 	"github.com/VaneZ444/auth-service/internal/usecase"
+	"github.com/golang-migrate/migrate/v4"
+	migratePostgres "github.com/golang-migrate/migrate/v4/database/postgres"
+	_ "github.com/golang-migrate/migrate/v4/source/file"
+	_ "github.com/lib/pq"
 
 	logger "github.com/VaneZ444/forum-shared/logger"
 	protos "github.com/VaneZ444/golang-forum-protos/gen/go/sso"
@@ -17,37 +21,39 @@ import (
 )
 
 func main() {
-	// 1. Инициализация логгера
-	log := logger.New(slog.LevelDebug) // или LevelProd для прода
+	log := logger.New(slog.LevelDebug)
 
-	// 2. Подключение к PostgreSQL
-	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=postgres dbname=auth sslmode=disable")
+	// Подключение к PostgreSQL
+	db, err := sql.Open("postgres", "host=localhost port=5432 user=postgres password=3781 dbname=auth sslmode=disable")
 	if err != nil {
-		log.Error("failed to connect to DB", logger.Err(err))
+		log.Error("DB connection failed", logger.Err(err))
 		panic(err)
 	}
 	defer db.Close()
 
-	// 3. Инициализация репозиториев
-	userRepo := postgres.NewUserRepository(db)
-	appRepo := postgres.NewAppRepository(db) // Реализация AppRepository
+	// Применение миграций
+	/*if err := applyMigrations(db); err != nil {
+		log.Error("Migrations failed", logger.Err(err))
+		panic(err)
+	}*/
 
-	// 4. Создание UseCase
+	// Инициализация репозиториев
+	userRepo := pgRepo.NewUserRepository(db)
+	appRepo := pgRepo.NewAppRepository(db)
+
+	// 5. Создание UseCase
 	authUC := usecase.NewAuthUseCase(
 		userRepo,
-		appRepo,           // Реализация интерфейса AppRepository
-		"your-secret-key", // Секрет для JWT
-		24*time.Hour,      // TTL токена
+		appRepo,
+		"your-secret-key",
+		24*time.Hour,
 		log,
 	)
 
-	// 5. Создание gRPC обработчика
+	// 6. Создание gRPC обработчика
 	authHandler := handler.NewAuthHandler(authUC, log)
 
-	// 6. Запуск gRPC сервера
-	srv := grpc.NewServer()
-	protos.RegisterAuthServer(srv, authHandler)
-	// 3. gRPC-сервер
+	// 7. Запуск gRPC сервера
 	server := grpc.NewServer()
 	protos.RegisterAuthServer(server, authHandler)
 
@@ -56,6 +62,28 @@ func main() {
 		log.Error("Server failed", logger.Err(err))
 		os.Exit(1)
 	}
+
 	log.Info("Auth service started on :50051")
-	server.Serve(lis)
+	if err := server.Serve(lis); err != nil {
+		log.Error("Server failed", logger.Err(err))
+		os.Exit(1)
+	}
+}
+
+func applyMigrations(db *sql.DB) error {
+	driver, err := migratePostgres.WithInstance(db, &migratePostgres.Config{})
+	if err != nil {
+		return err
+	}
+
+	m, err := migrate.NewWithDatabaseInstance(
+		"file://../../internal/migrations/",
+		"postgres",
+		driver,
+	)
+	if err != nil {
+		return err
+	}
+
+	return m.Up()
 }

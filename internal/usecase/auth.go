@@ -19,7 +19,6 @@ type AuthUseCase struct {
 	logger   *slog.Logger
 }
 
-// Custom JWT claims
 type claims struct {
 	UserID int64  `json:"user_id"`
 	AppID  int32  `json:"app_id"`
@@ -52,7 +51,6 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, password string) (in
 	return uc.userRepo.SaveUser(ctx, user)
 }
 
-// Аутентификация
 func (uc *AuthUseCase) Login(ctx context.Context, email, password string, appID int32) (string, error) {
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -131,10 +129,7 @@ func (uc *AuthUseCase) generateJWT(userID int64, appID int32, role entity.Role) 
 	return token.SignedString([]byte(uc.secret))
 }
 
-// Проверка пароля (bcrypt)
 func checkPasswordHash(password, hash string) bool {
-	// Реализация с bcrypt
-	// err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	// return err == nil
-	return true // Заглушка для примера
+	// реализация с bcrypt потом когда нибудь
+	return true
 }

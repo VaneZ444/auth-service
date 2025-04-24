@@ -15,9 +15,9 @@ import (
 )
 
 type AuthHandler struct {
-	authUC                        *usecase.AuthUseCase
-	logger                        *slog.Logger
-	ssov1.UnimplementedAuthServer // Обязательно для gRPC
+	authUC *usecase.AuthUseCase
+	logger *slog.Logger
+	ssov1.UnimplementedAuthServer
 }
 
 func NewAuthHandler(authUC *usecase.AuthUseCase, logger *slog.Logger) *AuthHandler {
@@ -27,7 +27,7 @@ func NewAuthHandler(authUC *usecase.AuthUseCase, logger *slog.Logger) *AuthHandl
 	}
 }
 
-// Register — регистрация обычного пользователя.
+// регистрация обычного пользователя.
 func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
 	const op = "handler.Register"
 	h.logger.Info("register request", slog.String("op", op), slog.String("email", req.Email))
@@ -46,12 +46,12 @@ func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) 
 	return &ssov1.RegisterResponse{UserId: userID}, nil
 }
 
-// CreateAdmin — создание админа (требует прав суперадмина).
+// создание админа.
 func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminRequest) (*ssov1.CreateAdminResponse, error) {
 	const op = "handler.CreateAdmin"
 	h.logger.Info("create admin request", slog.String("op", op))
 
-	// Проверяем, что вызывающий — админ (через gRPC-метаданные или токен)
+	// Проверяем, что вызывающий — админ
 	callerRole, err := h.getCallerRole(ctx)
 	if err != nil || callerRole != entity.RoleAdmin {
 		return nil, status.Error(codes.PermissionDenied, "admin rights required")
@@ -70,7 +70,7 @@ func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminReq
 	return &ssov1.CreateAdminResponse{UserId: userID}, nil
 }
 
-// Login — аутентификация пользователя.
+// аутентификация пользователя
 func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
 	const op = "handler.Login"
 	h.logger.Info("login request", slog.String("op", op), slog.String("email", req.Email))
@@ -92,7 +92,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov
 	return &ssov1.LoginResponse{Token: token}, nil
 }
 
-// IsAdmin — проверка прав администратора.
+// проверка прав админа
 func (h *AuthHandler) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error) {
 	const op = "handler.IsAdmin"
 	h.logger.Debug("is_admin check", slog.String("op", op), slog.Int64("user_id", req.UserId))
@@ -106,9 +106,8 @@ func (h *AuthHandler) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*
 	return &ssov1.IsAdminResponse{IsAdmin: isAdmin}, nil
 }
 
-// getCallerRole — вспомогательный метод для проверки прав вызывающего.
 func (h *AuthHandler) getCallerRole(ctx context.Context) (entity.Role, error) {
-	// Пример: извлечение роли из JWT в метаданных gRPC
+
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", errors.New("metadata not found")

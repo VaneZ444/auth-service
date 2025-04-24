@@ -24,8 +24,8 @@ const (
 type User struct {
 	ID           int64
 	Email        string
-	Password     string // Нехешированный пароль (для валидации)
-	PasswordHash string // Хешированный пароль (для хранения в БД)
+	Password     string // Нехешированный пароль
+	PasswordHash string // Хешированный
 	Role         Role   // 'user' или 'admin'
 	Status       Status // 'active' или 'banned'
 }
@@ -46,7 +46,7 @@ func NewUser(email, password string, role Role) (*User, error) {
 		Password:     password,
 		PasswordHash: string(hashedPassword),
 		Role:         role,
-		Status:       StatusActive, // По умолчанию
+		Status:       StatusActive,
 	}, nil
 }
 

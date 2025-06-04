@@ -6,7 +6,7 @@ import (
 	"log/slog"
 
 	"github.com/VaneZ444/auth-service/internal/entity"
-	"github.com/VaneZ444/auth-service/internal/pkg/jwtutils"
+	"github.com/VaneZ444/auth-service/internal/jwt"
 	"github.com/VaneZ444/auth-service/internal/usecase"
 	ssov1 "github.com/VaneZ444/golang-forum-protos/gen/go/sso"
 	"google.golang.org/grpc/codes"
@@ -15,28 +15,27 @@ import (
 )
 
 type AuthHandler struct {
-	authUC *usecase.AuthUseCase
-	logger *slog.Logger
+	authUC     usecase.AuthUseCase
+	jwtService jwt.Service
+	logger     *slog.Logger // TODO: заменить на интерфейс
 	ssov1.UnimplementedAuthServer
 }
 
-func NewAuthHandler(authUC *usecase.AuthUseCase, logger *slog.Logger) *AuthHandler {
+func NewAuthHandler(authUC usecase.AuthUseCase, jwtService jwt.Service, logger *slog.Logger) *AuthHandler {
 	return &AuthHandler{
-		authUC: authUC,
-		logger: logger,
+		authUC:     authUC,
+		jwtService: jwtService,
+		logger:     logger,
 	}
 }
 
-// регистрация обычного пользователя.
 func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
 	const op = "handler.Register"
 	h.logger.Info("register request", slog.String("op", op), slog.String("email", req.Email))
 
-	// Делегируем бизнес-логику UseCase
 	userID, err := h.authUC.Register(ctx, req.Email, req.Password)
 	if err != nil {
 		h.logger.Error("registration failed", slog.String("op", op), slog.String("err", err.Error()))
-
 		if errors.Is(err, usecase.ErrInvalidCredentials) {
 			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
 		}
@@ -46,12 +45,10 @@ func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) 
 	return &ssov1.RegisterResponse{UserId: userID}, nil
 }
 
-// создание админа.
 func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminRequest) (*ssov1.CreateAdminResponse, error) {
 	const op = "handler.CreateAdmin"
 	h.logger.Info("create admin request", slog.String("op", op))
 
-	// Проверяем, что вызывающий — админ
 	callerRole, err := h.getCallerRole(ctx)
 	if err != nil || callerRole != entity.RoleAdmin {
 		return nil, status.Error(codes.PermissionDenied, "admin rights required")
@@ -61,7 +58,6 @@ func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminReq
 		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
 	}
 	userID, err := h.authUC.CreateAdmin(ctx, req.Email, req.Password, callerUserID)
-
 	if err != nil {
 		h.logger.Error("create admin failed", slog.String("op", op), slog.String("err", err.Error()))
 		return nil, status.Error(codes.Internal, "internal error")
@@ -70,7 +66,6 @@ func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminReq
 	return &ssov1.CreateAdminResponse{UserId: userID}, nil
 }
 
-// аутентификация пользователя
 func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
 	const op = "handler.Login"
 	h.logger.Info("login request", slog.String("op", op), slog.String("email", req.Email))
@@ -78,7 +73,6 @@ func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov
 	token, err := h.authUC.Login(ctx, req.Email, req.Password, req.AppId)
 	if err != nil {
 		h.logger.Error("login failed", slog.String("op", op), slog.String("err", err.Error()))
-
 		switch {
 		case errors.Is(err, usecase.ErrInvalidCredentials):
 			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
@@ -92,7 +86,6 @@ func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov
 	return &ssov1.LoginResponse{Token: token}, nil
 }
 
-// проверка прав админа
 func (h *AuthHandler) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error) {
 	const op = "handler.IsAdmin"
 	h.logger.Debug("is_admin check", slog.String("op", op), slog.Int64("user_id", req.UserId))
@@ -107,7 +100,6 @@ func (h *AuthHandler) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*
 }
 
 func (h *AuthHandler) getCallerRole(ctx context.Context) (entity.Role, error) {
-
 	md, ok := metadata.FromIncomingContext(ctx)
 	if !ok {
 		return "", errors.New("metadata not found")
@@ -118,7 +110,7 @@ func (h *AuthHandler) getCallerRole(ctx context.Context) (entity.Role, error) {
 		return "", errors.New("token not provided")
 	}
 
-	claims, err := jwtutils.ParseToken(tokens[0])
+	claims, err := h.jwtService.ParseToken(tokens[0])
 	if err != nil {
 		return "", err
 	}
@@ -137,7 +129,7 @@ func (h *AuthHandler) getCallerUserID(ctx context.Context) (int64, error) {
 		return 0, errors.New("token not provided")
 	}
 
-	claims, err := jwtutils.ParseToken(tokens[0])
+	claims, err := h.jwtService.ParseToken(tokens[0])
 	if err != nil {
 		return 0, err
 	}

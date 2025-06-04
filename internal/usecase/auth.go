@@ -12,7 +12,7 @@ import (
 	"github.com/VaneZ444/auth-service/internal/repository"
 )
 
-type AuthUseCase struct {
+type authUseCase struct {
 	userRepo   repository.UserRepository
 	appRepo    repository.AppRepository
 	jwtService jwt.Service
@@ -24,8 +24,8 @@ func NewAuthUseCase(
 	appRepo repository.AppRepository,
 	jwtService jwt.Service,
 	logger *slog.Logger,
-) *AuthUseCase {
-	return &AuthUseCase{
+) *authUseCase {
+	return &authUseCase{
 		userRepo:   userRepo,
 		appRepo:    appRepo,
 		jwtService: jwtService,
@@ -33,7 +33,7 @@ func NewAuthUseCase(
 	}
 }
 
-func (uc *AuthUseCase) Register(ctx context.Context, email, password string) (int64, error) {
+func (uc *authUseCase) Register(ctx context.Context, email, password string) (int64, error) {
 	if err := validator.ValidateEmail(email); err != nil {
 		return 0, fmt.Errorf("%w: %v", ErrInvalidCredentials, err)
 	}
@@ -49,7 +49,7 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, password string) (in
 	return uc.userRepo.SaveUser(ctx, user)
 }
 
-func (uc *AuthUseCase) Login(ctx context.Context, email, password string, appID int32) (string, error) {
+func (uc *authUseCase) Login(ctx context.Context, email, password string, appID int32) (string, error) {
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
 		return "", fmt.Errorf("%w: %v", ErrUserNotFound, err)
@@ -71,7 +71,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password string, appID 
 	return token, nil
 }
 
-func (uc *AuthUseCase) CreateAdmin(ctx context.Context, email, password string, requestingUserID int64) (int64, error) {
+func (uc *authUseCase) CreateAdmin(ctx context.Context, email, password string, requestingUserID int64) (int64, error) {
 	isAdmin, err := uc.IsAdmin(ctx, requestingUserID)
 	if err != nil || !isAdmin {
 		return 0, ErrAccessDenied
@@ -92,7 +92,7 @@ func (uc *AuthUseCase) CreateAdmin(ctx context.Context, email, password string, 
 	return uc.userRepo.SaveUser(ctx, user)
 }
 
-func (uc *AuthUseCase) IsAdmin(ctx context.Context, userID int64) (bool, error) {
+func (uc *authUseCase) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 	user, err := uc.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
 		return false, fmt.Errorf("%w: %v", ErrUserNotFound, err)

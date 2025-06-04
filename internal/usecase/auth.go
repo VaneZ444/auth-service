@@ -46,7 +46,7 @@ func NewAuthUseCase(
 func (uc *AuthUseCase) Register(ctx context.Context, email, password string) (int64, error) {
 	user, err := entity.NewUser(email, password, entity.RoleUser)
 	if err != nil {
-		return 0, fmt.Errorf("%w: %v", entity.ErrInvalidCredentials, err)
+		return 0, fmt.Errorf("%w: %v", ErrInvalidCredentials, err)
 	}
 	return uc.userRepo.SaveUser(ctx, user)
 }
@@ -54,15 +54,15 @@ func (uc *AuthUseCase) Register(ctx context.Context, email, password string) (in
 func (uc *AuthUseCase) Login(ctx context.Context, email, password string, appID int32) (string, error) {
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", entity.ErrUserNotFound, err)
+		return "", fmt.Errorf("%w: %v", ErrUserNotFound, err)
 	}
 
 	if user.Status == entity.StatusBanned {
-		return "", entity.ErrUserBanned
+		return "", ErrUserBanned
 	}
 
 	if !checkPasswordHash(password, user.PasswordHash) {
-		return "", entity.ErrInvalidCredentials
+		return "", ErrInvalidCredentials
 	}
 
 	return uc.generateJWT(user.ID, appID, user.Role)
@@ -72,7 +72,7 @@ func (uc *AuthUseCase) Login(ctx context.Context, email, password string, appID 
 func (uc *AuthUseCase) CreateAdmin(ctx context.Context, email, password string, requestingUserID int64) (int64, error) {
 	isAdmin, err := uc.IsAdmin(ctx, requestingUserID)
 	if err != nil || !isAdmin {
-		return 0, entity.ErrAccessDenied
+		return 0, ErrAccessDenied
 	}
 
 	user, err := entity.NewUser(email, password, entity.RoleAdmin)
@@ -86,7 +86,7 @@ func (uc *AuthUseCase) CreateAdmin(ctx context.Context, email, password string, 
 func (uc *AuthUseCase) IsAdmin(ctx context.Context, userID int64) (bool, error) {
 	user, err := uc.userRepo.GetUserByID(ctx, userID)
 	if err != nil {
-		return false, fmt.Errorf("%w: %v", entity.ErrUserNotFound, err)
+		return false, fmt.Errorf("%w: %v", ErrUserNotFound, err)
 	}
 	return user.Role == entity.RoleAdmin, nil
 }
@@ -108,7 +108,7 @@ func (uc *AuthUseCase) ParseToken(tokenString string) (*claims, error) {
 		return claims, nil
 	}
 
-	return nil, entity.ErrInvalidToken
+	return nil, ErrInvalidToken
 }
 
 // Генерация JWT токена

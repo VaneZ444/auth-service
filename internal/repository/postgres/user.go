@@ -6,6 +6,7 @@ import (
 
 	"github.com/VaneZ444/auth-service/internal/entity"
 	"github.com/VaneZ444/auth-service/internal/repository"
+	"github.com/VaneZ444/auth-service/internal/usecase"
 )
 
 type UserRepository struct {
@@ -30,7 +31,7 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 	var user entity.User
 	err := r.db.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.Password, &user.Role, &user.Status)
 	if err == sql.ErrNoRows {
-		return nil, entity.ErrUserNotFound
+		return nil, usecase.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, err
@@ -43,7 +44,7 @@ func (r *UserRepository) IsAdmin(ctx context.Context, userID int64) (bool, error
 	var role entity.Role
 	err := r.db.QueryRowContext(ctx, query, userID).Scan(&role)
 	if err == sql.ErrNoRows {
-		return false, entity.ErrUserNotFound
+		return false, usecase.ErrUserNotFound
 	}
 	if err != nil {
 		return false, err
@@ -56,7 +57,7 @@ func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*entity.Use
 	var user entity.User
 	err := r.db.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Email, &user.Password, &user.Role, &user.Status)
 	if err == sql.ErrNoRows {
-		return nil, entity.ErrUserNotFound
+		return nil, usecase.ErrUserNotFound
 	}
 	if err != nil {
 		return nil, err

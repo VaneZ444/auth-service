@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/VaneZ444/auth-service/internal/entity"
+	"github.com/VaneZ444/auth-service/internal/app"
 	"github.com/VaneZ444/auth-service/internal/repository"
 )
 
@@ -20,7 +20,7 @@ func (r *AppRepository) GetAppByID(ctx context.Context, appID int32) (name strin
 	const query = `SELECT name, secret FROM apps WHERE id = $1`
 	err = r.db.QueryRowContext(ctx, query, appID).Scan(&name, &secret)
 	if err == sql.ErrNoRows {
-		return "", "", entity.ErrAppNotFound
+		return "", "", app.ErrAppNotFound
 	}
 	return
 }

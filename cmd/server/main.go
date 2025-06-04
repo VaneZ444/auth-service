@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/VaneZ444/auth-service/internal/handler"
+	"github.com/VaneZ444/auth-service/internal/jwt"
 	pgRepo "github.com/VaneZ444/auth-service/internal/repository/postgres"
 	"github.com/VaneZ444/auth-service/internal/usecase"
 	"github.com/golang-migrate/migrate/v4"
@@ -40,18 +41,17 @@ func main() {
 	// Инициализация репозиториев
 	userRepo := pgRepo.NewUserRepository(db)
 	appRepo := pgRepo.NewAppRepository(db)
-
+	jwtService := jwt.NewService("your-secret-key", 24*time.Hour)
 	// 5. Создание UseCase
 	authUC := usecase.NewAuthUseCase(
 		userRepo,
 		appRepo,
-		"your-secret-key",
-		24*time.Hour,
+		jwtService,
 		log,
 	)
 
 	// 6. Создание gRPC обработчика
-	authHandler := handler.NewAuthHandler(authUC, log)
+	authHandler := handler.NewAuthHandler(authUC, jwtService, log)
 
 	// 7. Запуск gRPC сервера
 	server := grpc.NewServer()

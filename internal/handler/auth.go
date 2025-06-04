@@ -6,8 +6,8 @@ import (
 	"log/slog"
 
 	"github.com/VaneZ444/auth-service/internal/entity"
+	"github.com/VaneZ444/auth-service/internal/pkg/jwtutils"
 	"github.com/VaneZ444/auth-service/internal/usecase"
-
 	ssov1 "github.com/VaneZ444/golang-forum-protos/gen/go/sso"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
@@ -37,7 +37,7 @@ func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) 
 	if err != nil {
 		h.logger.Error("registration failed", slog.String("op", op), slog.String("err", err.Error()))
 
-		if errors.Is(err, entity.ErrInvalidCredentials) {
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
 			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
 		}
 		return nil, status.Error(codes.Internal, "internal error")
@@ -80,9 +80,9 @@ func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov
 		h.logger.Error("login failed", slog.String("op", op), slog.String("err", err.Error()))
 
 		switch {
-		case errors.Is(err, entity.ErrInvalidCredentials):
+		case errors.Is(err, usecase.ErrInvalidCredentials):
 			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
-		case errors.Is(err, entity.ErrUserBanned):
+		case errors.Is(err, usecase.ErrUserBanned):
 			return nil, status.Error(codes.PermissionDenied, "user banned")
 		default:
 			return nil, status.Error(codes.Internal, "internal error")
@@ -118,7 +118,7 @@ func (h *AuthHandler) getCallerRole(ctx context.Context) (entity.Role, error) {
 		return "", errors.New("token not provided")
 	}
 
-	claims, err := h.authUC.ParseToken(tokens[0])
+	claims, err := jwtutils.ParseToken(tokens[0])
 	if err != nil {
 		return "", err
 	}
@@ -137,7 +137,7 @@ func (h *AuthHandler) getCallerUserID(ctx context.Context) (int64, error) {
 		return 0, errors.New("token not provided")
 	}
 
-	claims, err := h.authUC.ParseToken(tokens[0])
+	claims, err := jwtutils.ParseToken(tokens[0])
 	if err != nil {
 		return 0, err
 	}

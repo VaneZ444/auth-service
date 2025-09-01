@@ -136,3 +136,16 @@ func (h *AuthHandler) getCallerUserID(ctx context.Context) (int64, error) {
 
 	return claims.UserID, nil
 }
+
+func (h *AuthHandler) ValidateToken(ctx context.Context, req *ssov1.ValidateTokenRequest) (*ssov1.ValidateTokenResponse, error) {
+	claims, err := h.jwtService.ParseToken(req.Token)
+	if err != nil {
+		return &ssov1.ValidateTokenResponse{Valid: false}, nil
+	}
+
+	return &ssov1.ValidateTokenResponse{
+		Valid:  true,
+		UserId: claims.UserID,
+		Role:   claims.Role,
+	}, nil
+}

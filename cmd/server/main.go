@@ -33,10 +33,10 @@ func main() {
 	defer db.Close()
 
 	// Применение миграций
-	/*if err := applyMigrations(db); err != nil {
+	if err := applyMigrations(db); err != nil {
 		log.Error("Migrations failed", logger.Err(err))
 		panic(err)
-	}*/
+	}
 
 	// Инициализация репозиториев
 	userRepo := pgRepo.NewUserRepository(db)
@@ -77,7 +77,7 @@ func applyMigrations(db *sql.DB) error {
 	}
 
 	m, err := migrate.NewWithDatabaseInstance(
-		"file://../../internal/migrations/",
+		"file://../../internal/migrations",
 		"postgres",
 		driver,
 	)

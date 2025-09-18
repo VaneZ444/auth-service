@@ -135,3 +135,22 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, req *ssov1.ValidateToke
 		Nickname: claims.Nickname,
 	}, nil
 }
+func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminRequest) (*ssov1.CreateAdminResponse, error) {
+	const op = "handler.CreateAdmin"
+	h.logger.Info("create admin request", slog.String("op", op), slog.String("email", req.Email))
+
+	// просто вызываем UseCase для создания пользователя с ролью "admin"
+	userID, nickname, err := h.authUC.RegisterAdmin(ctx, req.Email, req.Nickname, req.Password)
+	if err != nil {
+		h.logger.Error("create admin failed", slog.String("op", op), slog.String("err", err.Error()))
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "invalid email, nickname or password")
+		}
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	return &ssov1.CreateAdminResponse{
+		UserId:   userID,
+		Nickname: nickname,
+	}, nil
+}

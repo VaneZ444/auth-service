@@ -101,3 +101,27 @@ func (uc *authUseCase) IsAdmin(ctx context.Context, userID int64) (bool, error) 
 	}
 	return user.Role == entity.RoleAdmin, nil
 }
+func (uc *authUseCase) RegisterAdmin(ctx context.Context, email, nickname, password string) (int64, string, error) {
+	if err := validator.ValidateEmail(email); err != nil {
+		return 0, "", fmt.Errorf("%w: %v", ErrInvalidCredentials, err)
+	}
+	if len(password) < 8 {
+		return 0, "", fmt.Errorf("%w: password too short", ErrInvalidCredentials)
+	}
+	if len(nickname) < 3 {
+		return 0, "", fmt.Errorf("%w: nickname too short", ErrInvalidCredentials)
+	}
+
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return 0, "", err
+	}
+
+	user := entity.NewUser(email, nickname, hashedPassword, entity.RoleAdmin)
+	id, err := uc.userRepo.SaveUser(ctx, user)
+	if err != nil {
+		return 0, "", err
+	}
+
+	return id, nickname, nil
+}

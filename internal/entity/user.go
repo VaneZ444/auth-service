@@ -15,18 +15,20 @@ const (
 )
 
 type User struct {
-	ID     int64
-	Email  string
-	Hash   string // Это уже хеш!
-	Role   Role
-	Status Status
+	ID       int64
+	Email    string
+	Nickname string
+	Hash     string
+	Role     Role
+	Status   Status
 }
 
-func NewUser(email, hashedPassword string, role Role) *User {
+func NewUser(email, nickname, hashedPassword string, role Role) *User {
 	return &User{
-		Email:  email,
-		Hash:   hashedPassword,
-		Role:   role,
-		Status: StatusActive,
+		Email:    email,
+		Nickname: nickname,
+		Hash:     hashedPassword,
+		Role:     role,
+		Status:   StatusActive,
 	}
 }

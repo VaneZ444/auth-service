@@ -8,14 +8,15 @@ import (
 )
 
 type Claims struct {
-	UserID int64  `json:"user_id"`
-	AppID  int32  `json:"app_id"`
-	Role   string `json:"role"`
+	UserID   int64  `json:"user_id"`
+	AppID    int32  `json:"app_id"`
+	Role     string `json:"role"`
+	Nickname string `json:"nickname"` // <-- добавили ник
 	jwt.RegisteredClaims
 }
 
 type Service interface {
-	GenerateToken(userID int64, appID int32, role string) (string, error)
+	GenerateToken(userID int64, appID int32, role, nickname string) (string, error)
 	ParseToken(tokenStr string) (*Claims, error)
 }
 
@@ -31,13 +32,14 @@ func NewService(secret string, tokenTTL time.Duration) Service {
 	}
 }
 
-func (s *jwtService) GenerateToken(userID int64, appID int32, role string) (string, error) {
+func (s *jwtService) GenerateToken(userID int64, appID int32, role, nickname string) (string, error) {
 	now := time.Now()
 
 	claims := &Claims{
-		UserID: userID,
-		AppID:  appID,
-		Role:   role,
+		UserID:   userID,
+		AppID:    appID,
+		Role:     role,
+		Nickname: nickname, // <-- сохраняем ник
 		RegisteredClaims: jwt.RegisteredClaims{
 			IssuedAt:  jwt.NewNumericDate(now),
 			ExpiresAt: jwt.NewNumericDate(now.Add(s.tokenTTL)),

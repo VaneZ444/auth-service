@@ -29,63 +29,6 @@ func NewAuthHandler(authUC usecase.AuthUseCase, jwtService jwt.Service, logger *
 	}
 }
 
-func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
-	const op = "handler.Register"
-	h.logger.Info("register request", slog.String("op", op), slog.String("email", req.Email))
-
-	userID, err := h.authUC.Register(ctx, req.Email, req.Password)
-	if err != nil {
-		h.logger.Error("registration failed", slog.String("op", op), slog.String("err", err.Error()))
-		if errors.Is(err, usecase.ErrInvalidCredentials) {
-			return nil, status.Error(codes.InvalidArgument, "invalid email or password")
-		}
-		return nil, status.Error(codes.Internal, "internal error")
-	}
-
-	return &ssov1.RegisterResponse{UserId: userID}, nil
-}
-
-func (h *AuthHandler) CreateAdmin(ctx context.Context, req *ssov1.CreateAdminRequest) (*ssov1.CreateAdminResponse, error) {
-	const op = "handler.CreateAdmin"
-	h.logger.Info("create admin request", slog.String("op", op))
-
-	callerRole, err := h.getCallerRole(ctx)
-	if err != nil || callerRole != entity.RoleAdmin {
-		return nil, status.Error(codes.PermissionDenied, "admin rights required")
-	}
-	callerUserID, err := h.getCallerUserID(ctx)
-	if err != nil {
-		return nil, status.Error(codes.Unauthenticated, "unauthenticated")
-	}
-	userID, err := h.authUC.CreateAdmin(ctx, req.Email, req.Password, callerUserID)
-	if err != nil {
-		h.logger.Error("create admin failed", slog.String("op", op), slog.String("err", err.Error()))
-		return nil, status.Error(codes.Internal, "internal error")
-	}
-
-	return &ssov1.CreateAdminResponse{UserId: userID}, nil
-}
-
-func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
-	const op = "handler.Login"
-	h.logger.Info("login request", slog.String("op", op), slog.String("email", req.Email))
-
-	token, err := h.authUC.Login(ctx, req.Email, req.Password, req.AppId)
-	if err != nil {
-		h.logger.Error("login failed", slog.String("op", op), slog.String("err", err.Error()))
-		switch {
-		case errors.Is(err, usecase.ErrInvalidCredentials):
-			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
-		case errors.Is(err, usecase.ErrUserBanned):
-			return nil, status.Error(codes.PermissionDenied, "user banned")
-		default:
-			return nil, status.Error(codes.Internal, "internal error")
-		}
-	}
-
-	return &ssov1.LoginResponse{Token: token}, nil
-}
-
 func (h *AuthHandler) IsAdmin(ctx context.Context, req *ssov1.IsAdminRequest) (*ssov1.IsAdminResponse, error) {
 	const op = "handler.IsAdmin"
 	h.logger.Debug("is_admin check", slog.String("op", op), slog.Int64("user_id", req.UserId))
@@ -137,6 +80,48 @@ func (h *AuthHandler) getCallerUserID(ctx context.Context) (int64, error) {
 	return claims.UserID, nil
 }
 
+func (h *AuthHandler) Register(ctx context.Context, req *ssov1.RegisterRequest) (*ssov1.RegisterResponse, error) {
+	const op = "handler.Register"
+	h.logger.Info("register request", slog.String("op", op), slog.String("email", req.Email))
+
+	userID, nickname, err := h.authUC.Register(ctx, req.Email, req.Nickname, req.Password)
+	if err != nil {
+		h.logger.Error("registration failed", slog.String("op", op), slog.String("err", err.Error()))
+		if errors.Is(err, usecase.ErrInvalidCredentials) {
+			return nil, status.Error(codes.InvalidArgument, "invalid email, nickname or password")
+		}
+		return nil, status.Error(codes.Internal, "internal error")
+	}
+
+	return &ssov1.RegisterResponse{
+		UserId:   userID,
+		Nickname: nickname,
+	}, nil
+}
+
+func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov1.LoginResponse, error) {
+	const op = "handler.Login"
+	h.logger.Info("login request", slog.String("op", op), slog.String("email", req.Email))
+
+	token, nickname, err := h.authUC.Login(ctx, req.Email, req.Password, req.AppId)
+	if err != nil {
+		h.logger.Error("login failed", slog.String("op", op), slog.String("err", err.Error()))
+		switch {
+		case errors.Is(err, usecase.ErrInvalidCredentials):
+			return nil, status.Error(codes.Unauthenticated, "invalid credentials")
+		case errors.Is(err, usecase.ErrUserBanned):
+			return nil, status.Error(codes.PermissionDenied, "user banned")
+		default:
+			return nil, status.Error(codes.Internal, "internal error")
+		}
+	}
+
+	return &ssov1.LoginResponse{
+		Token:    token,
+		Nickname: nickname,
+	}, nil
+}
+
 func (h *AuthHandler) ValidateToken(ctx context.Context, req *ssov1.ValidateTokenRequest) (*ssov1.ValidateTokenResponse, error) {
 	claims, err := h.jwtService.ParseToken(req.Token)
 	if err != nil {
@@ -144,8 +129,9 @@ func (h *AuthHandler) ValidateToken(ctx context.Context, req *ssov1.ValidateToke
 	}
 
 	return &ssov1.ValidateTokenResponse{
-		Valid:  true,
-		UserId: claims.UserID,
-		Role:   claims.Role,
+		Valid:    true,
+		UserId:   claims.UserID,
+		Role:     claims.Role,
+		Nickname: claims.Nickname,
 	}, nil
 }

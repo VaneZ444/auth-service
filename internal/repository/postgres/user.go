@@ -18,8 +18,12 @@ func NewUserRepository(db *sql.DB) repository.UserRepository {
 }
 
 func (r *UserRepository) SaveUser(ctx context.Context, user *entity.User) (int64, error) {
-	const query = `INSERT INTO users (email, password, role, status) VALUES ($1, $2, $3, $4) RETURNING id`
-	err := r.db.QueryRowContext(ctx, query, user.Email, user.Hash, user.Role, user.Status).Scan(&user.ID)
+	const query = `
+		INSERT INTO users (email, password, role, status, nickname)
+		VALUES ($1, $2, $3, $4, $5)
+		RETURNING id
+	`
+	err := r.db.QueryRowContext(ctx, query, user.Email, user.Hash, user.Role, user.Status, user.Nickname).Scan(&user.ID)
 	if err != nil {
 		return 0, err
 	}
@@ -27,9 +31,30 @@ func (r *UserRepository) SaveUser(ctx context.Context, user *entity.User) (int64
 }
 
 func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*entity.User, error) {
-	const query = `SELECT id, email, password, role, status FROM users WHERE email = $1`
+	const query = `
+		SELECT id, email, password, role, status, nickname
+		FROM users
+		WHERE email = $1
+	`
 	var user entity.User
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.Hash, &user.Role, &user.Status)
+	err := r.db.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.Hash, &user.Role, &user.Status, &user.Nickname)
+	if err == sql.ErrNoRows {
+		return nil, usecase.ErrUserNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}
+
+func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*entity.User, error) {
+	const query = `
+		SELECT id, email, password, role, status, nickname
+		FROM users
+		WHERE id = $1
+	`
+	var user entity.User
+	err := r.db.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Email, &user.Hash, &user.Role, &user.Status, &user.Nickname)
 	if err == sql.ErrNoRows {
 		return nil, usecase.ErrUserNotFound
 	}
@@ -50,17 +75,4 @@ func (r *UserRepository) IsAdmin(ctx context.Context, userID int64) (bool, error
 		return false, err
 	}
 	return role == entity.RoleAdmin, nil
-}
-
-func (r *UserRepository) GetUserByID(ctx context.Context, id int64) (*entity.User, error) {
-	const query = `SELECT id, email, password, role, status FROM users WHERE id = $1`
-	var user entity.User
-	err := r.db.QueryRowContext(ctx, query, id).Scan(&user.ID, &user.Email, &user.Hash, &user.Role, &user.Status)
-	if err == sql.ErrNoRows {
-		return nil, usecase.ErrUserNotFound
-	}
-	if err != nil {
-		return nil, err
-	}
-	return &user, nil
 }

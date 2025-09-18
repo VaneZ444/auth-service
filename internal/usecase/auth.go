@@ -33,63 +33,65 @@ func NewAuthUseCase(
 	}
 }
 
-func (uc *authUseCase) Register(ctx context.Context, email, password string) (int64, error) {
+func (uc *authUseCase) Register(ctx context.Context, email, nickname, password string) (int64, string, error) {
 	if err := validator.ValidateEmail(email); err != nil {
-		return 0, fmt.Errorf("%w: %v", ErrInvalidCredentials, err)
+		return 0, "", fmt.Errorf("%w: %v", ErrInvalidCredentials, err)
 	}
 	if len(password) < 8 {
-		return 0, fmt.Errorf("%w: password too short", ErrInvalidCredentials)
+		return 0, "", fmt.Errorf("%w: password too short", ErrInvalidCredentials)
 	}
+	if len(nickname) < 3 {
+		return 0, "", fmt.Errorf("%w: nickname too short", ErrInvalidCredentials)
+	}
+
+	hashedPassword, err := utils.HashPassword(password)
+	if err != nil {
+		return 0, "", err
+	}
+
+	user := entity.NewUser(email, nickname, hashedPassword, entity.RoleUser)
+	id, err := uc.userRepo.SaveUser(ctx, user)
+	if err != nil {
+		return 0, "", err
+	}
+	return id, nickname, nil
+}
+func (uc *authUseCase) CreateAdmin(ctx context.Context, email, password, nickname string, requesterID int64) (int64, error) {
+	// Проверяем, что requester имеет права
+	isAdmin, err := uc.IsAdmin(ctx, requesterID)
+	if err != nil || !isAdmin {
+		return 0, fmt.Errorf("permission denied")
+	}
+
 	hashedPassword, err := utils.HashPassword(password)
 	if err != nil {
 		return 0, err
 	}
 
-	user := entity.NewUser(email, hashedPassword, entity.RoleUser)
+	user := entity.NewUser(email, hashedPassword, nickname, entity.RoleAdmin)
 	return uc.userRepo.SaveUser(ctx, user)
 }
 
-func (uc *authUseCase) Login(ctx context.Context, email, password string, appID int32) (string, error) {
+func (uc *authUseCase) Login(ctx context.Context, email, password string, appID int32) (string, string, error) {
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
 	if err != nil {
-		return "", fmt.Errorf("%w: %v", ErrUserNotFound, err)
+		return "", "", fmt.Errorf("%w: %v", ErrUserNotFound, err)
 	}
 
 	if user.Status == entity.StatusBanned {
-		return "", ErrUserBanned
+		return "", "", ErrUserBanned
 	}
 
 	if err := utils.CheckPasswordHash(password, user.Hash); err != nil {
-		return "", ErrInvalidCredentials
+		return "", "", ErrInvalidCredentials
 	}
 
-	token, err := uc.jwtService.GenerateToken(user.ID, appID, string(user.Role))
+	token, err := uc.jwtService.GenerateToken(user.ID, appID, string(user.Role), string(user.Nickname))
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return token, nil
-}
-
-func (uc *authUseCase) CreateAdmin(ctx context.Context, email, password string, requestingUserID int64) (int64, error) {
-	isAdmin, err := uc.IsAdmin(ctx, requestingUserID)
-	if err != nil || !isAdmin {
-		return 0, ErrAccessDenied
-	}
-
-	if err := validator.ValidateEmail(email); err != nil {
-		return 0, fmt.Errorf("%w: %v", ErrInvalidCredentials, err)
-	}
-	if len(password) < 8 {
-		return 0, fmt.Errorf("%w: password too short", ErrInvalidCredentials)
-	}
-	hashedPassword, err := utils.HashPassword(password)
-	if err != nil {
-		return 0, err
-	}
-
-	user := entity.NewUser(email, hashedPassword, entity.RoleAdmin)
-	return uc.userRepo.SaveUser(ctx, user)
+	return token, user.Nickname, nil
 }
 
 func (uc *authUseCase) IsAdmin(ctx context.Context, userID int64) (bool, error) {

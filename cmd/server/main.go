@@ -39,8 +39,8 @@ func main() {
 	}
 
 	// Инициализация репозиториев
-	userRepo := pgRepo.NewUserRepository(db)
-	appRepo := pgRepo.NewAppRepository(db)
+	userRepo := pgRepo.NewUserRepository(db, log)
+	appRepo := pgRepo.NewAppRepository(db, log)
 	jwtService := jwt.NewService("your-secret-key", 24*time.Hour)
 	// 5. Создание UseCase
 	authUC := usecase.NewAuthUseCase(

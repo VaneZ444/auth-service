@@ -3,17 +3,19 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
 	"github.com/VaneZ444/auth-service/internal/app"
 	"github.com/VaneZ444/auth-service/internal/repository"
 )
 
 type AppRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func NewAppRepository(db *sql.DB) repository.AppRepository {
-	return &AppRepository{db: db}
+func NewAppRepository(db *sql.DB, logger *slog.Logger) repository.AppRepository {
+	return &AppRepository{db: db, logger: logger}
 }
 
 func (r *AppRepository) GetAppByID(ctx context.Context, appID int32) (name string, secret string, err error) {

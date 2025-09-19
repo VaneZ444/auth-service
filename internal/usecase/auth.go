@@ -72,26 +72,34 @@ func (uc *authUseCase) CreateAdmin(ctx context.Context, email, password, nicknam
 	return uc.userRepo.SaveUser(ctx, user)
 }
 
-func (uc *authUseCase) Login(ctx context.Context, email, password string, appID int32) (string, string, error) {
+func (uc *authUseCase) Login(ctx context.Context, email, password string, appID int32) (string, string, string, error) {
 	user, err := uc.userRepo.GetUserByEmail(ctx, email)
+	uc.logger.Debug("User data",
+		slog.Int64("id", user.ID),
+		slog.String("email", user.Email),
+		slog.String("nickname", user.Nickname),
+		slog.String("role", string(user.Role)), // Проверяем роль
+		slog.String("status", string(user.Status)),
+	)
+
 	if err != nil {
-		return "", "", fmt.Errorf("%w: %v", ErrUserNotFound, err)
+		return "", "", "", fmt.Errorf("%w: %v", ErrUserNotFound, err)
 	}
 
 	if user.Status == entity.StatusBanned {
-		return "", "", ErrUserBanned
+		return "", "", "", ErrUserBanned
 	}
 
 	if err := utils.CheckPasswordHash(password, user.Hash); err != nil {
-		return "", "", ErrInvalidCredentials
+		return "", "", "", ErrInvalidCredentials
 	}
 
 	token, err := uc.jwtService.GenerateToken(user.ID, appID, string(user.Role), string(user.Nickname))
 	if err != nil {
-		return "", "", err
+		return "", "", "", err
 	}
 
-	return token, user.Nickname, nil
+	return token, user.Nickname, string(user.Role), nil
 }
 
 func (uc *authUseCase) IsAdmin(ctx context.Context, userID int64) (bool, error) {

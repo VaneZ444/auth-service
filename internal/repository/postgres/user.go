@@ -3,18 +3,19 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"log/slog"
 
 	"github.com/VaneZ444/auth-service/internal/entity"
-	"github.com/VaneZ444/auth-service/internal/repository"
 	"github.com/VaneZ444/auth-service/internal/usecase"
 )
 
 type UserRepository struct {
-	db *sql.DB
+	db     *sql.DB
+	logger *slog.Logger
 }
 
-func NewUserRepository(db *sql.DB) repository.UserRepository {
-	return &UserRepository{db: db}
+func NewUserRepository(db *sql.DB, logger *slog.Logger) *UserRepository {
+	return &UserRepository{db: db, logger: logger}
 }
 
 func (r *UserRepository) SaveUser(ctx context.Context, user *entity.User) (int64, error) {
@@ -36,14 +37,34 @@ func (r *UserRepository) GetUserByEmail(ctx context.Context, email string) (*ent
 		FROM users
 		WHERE email = $1
 	`
+
 	var user entity.User
-	err := r.db.QueryRowContext(ctx, query, email).Scan(&user.ID, &user.Email, &user.Hash, &user.Role, &user.Status, &user.Nickname)
-	if err == sql.ErrNoRows {
-		return nil, usecase.ErrUserNotFound
-	}
+	var role string
+	err := r.db.QueryRowContext(ctx, query, email).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Hash,
+		&role,
+		&user.Status,
+		&user.Nickname,
+	)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, usecase.ErrUserNotFound
+		}
 		return nil, err
 	}
+
+	user.Role = entity.Role(role)
+
+	r.logger.Debug("Loaded user from DB",
+		slog.Int64("id", user.ID),
+		slog.String("email", user.Email),
+		slog.String("nickname", user.Nickname),
+		slog.String("role", string(user.Role)),
+		slog.String("status", string(user.Status)),
+	)
+
 	return &user, nil
 }
 

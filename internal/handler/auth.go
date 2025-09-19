@@ -103,7 +103,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov
 	const op = "handler.Login"
 	h.logger.Info("login request", slog.String("op", op), slog.String("email", req.Email))
 
-	token, nickname, err := h.authUC.Login(ctx, req.Email, req.Password, req.AppId)
+	token, nickname, role, err := h.authUC.Login(ctx, req.Email, req.Password, req.AppId)
 	if err != nil {
 		h.logger.Error("login failed", slog.String("op", op), slog.String("err", err.Error()))
 		switch {
@@ -119,6 +119,7 @@ func (h *AuthHandler) Login(ctx context.Context, req *ssov1.LoginRequest) (*ssov
 	return &ssov1.LoginResponse{
 		Token:    token,
 		Nickname: nickname,
+		Role:     role, // <-- добавили роль
 	}, nil
 }
 

@@ -4,7 +4,7 @@ go 1.24.0
 
 require (
 	github.com/VaneZ444/forum-shared v1.0.0
-	github.com/VaneZ444/golang-forum-protos v1.3.1
+	github.com/VaneZ444/golang-forum-protos v1.3.3
 	github.com/golang-jwt/jwt/v5 v5.3.0
 	golang.org/x/crypto v0.42.0
 	google.golang.org/grpc v1.75.0

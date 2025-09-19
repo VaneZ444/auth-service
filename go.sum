@@ -6,6 +6,10 @@ github.com/VaneZ444/forum-shared v1.0.0 h1:6bvXIl6PGfnLGhsInUBAByJYvoO+Ssrd8Udru
 github.com/VaneZ444/forum-shared v1.0.0/go.mod h1:V5Jbvciuktrp6WOdI9ykh9oZ9+kH8HZMUfKWGKw4zZ8=
 github.com/VaneZ444/golang-forum-protos v1.3.1 h1:CPjwOy/hGD8o150MxzC1MjvsE3amPjK3LCf3ijPuBQY=
 github.com/VaneZ444/golang-forum-protos v1.3.1/go.mod h1:UmwgwwQDJo9Q9PT7KM2FM7TOpp3r+ifB6OwQ9AiJKWU=
+github.com/VaneZ444/golang-forum-protos v1.3.2 h1:1IZobzXo+iEy5mYE6d0XMgxh4puvu066SlLxB9b0PXA=
+github.com/VaneZ444/golang-forum-protos v1.3.2/go.mod h1:UmwgwwQDJo9Q9PT7KM2FM7TOpp3r+ifB6OwQ9AiJKWU=
+github.com/VaneZ444/golang-forum-protos v1.3.3 h1:yQtOhsE1inMuqJPLlZ6ClJb45196BrLJVY6Urxt1bCA=
+github.com/VaneZ444/golang-forum-protos v1.3.3/go.mod h1:iLTpgyN0hh9qxEuAJ87hEZUbBA2H0RKLhULGTCzG/kQ=
 github.com/containerd/errdefs v1.0.0 h1:tg5yIfIlQIrxYtu9ajqY42W3lpS19XqdxRQeEwYG8PI=
 github.com/containerd/errdefs v1.0.0/go.mod h1:+YBYIdtsnF4Iw6nWZhJcqGSg/dwvV7tyJ/kCkyJ2k+M=
 github.com/containerd/errdefs/pkg v0.3.0 h1:9IKJ06FvyNlexW690DXuQNx2KA2cUJXx151Xdx3ZPPE=
